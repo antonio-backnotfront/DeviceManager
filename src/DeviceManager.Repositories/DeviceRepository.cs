@@ -19,253 +19,166 @@ public class DeviceRepository : IDeviceRepository
 
     public IEnumerable<DeviceDTO> GetAllDevices()
     {
-        List<DeviceDTO> devices = [];
         const string query = "SELECT * FROM Device";
+        List<DeviceDTO> devices = new();
 
-        using (SqlConnection connection = new SqlConnection(_connectionString))
+        using SqlConnection connection = new(_connectionString);
+        using SqlCommand command = new(query, connection);
+        connection.Open();
+        using SqlDataReader reader = command.ExecuteReader();
+        while (reader.Read())
         {
-            SqlCommand command = new SqlCommand(query, connection);
-            
-            connection.Open();
-            SqlDataReader reader = command.ExecuteReader();
-            try
+            devices.Add(new DeviceDTO
             {
-                if (reader.HasRows)
-                {
-                    while (reader.Read())
-                    {
-                        var deviceRow = new DeviceDTO
-                        {
-                            Id = reader.GetString(0),
-                            Name = reader.GetString(1),
-                            IsOn = reader.GetBoolean(2)
-                        };
-                        devices.Add(deviceRow);
-                    }
-                }
-            }
-            finally
-            {
-                reader.Close();
-            }
-            return devices;
+                Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                IsOn = reader.GetBoolean(2)
+            });
         }
+        return devices;
     }
     
     public Device? GetDeviceById(string id)
     {
-        var query = "SELECT * FROM Device";
+        if (string.IsNullOrWhiteSpace(id)) return null;
 
-        using (SqlConnection connection = new SqlConnection(_connectionString))
+        string query = id switch
         {
-            if (id.Contains("SW"))
-            {
-                query += " JOIN SmartWatch ON Device.Id = SmartWatch.Device_id WHERE SmartWatch.Device_Id = @id";
-                SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@id", id);
-                connection.Open();
-                
-                SqlDataReader reader = command.ExecuteReader();
-                try
-                {
-                    if (reader.Read())
-                    {
-                        return new SmartWatch
-                        {
-                            Device_Id = reader.GetString(0),
-                            Name = reader.GetString(1),
-                            IsOn = reader.GetBoolean(2),
-                            Id = reader.GetInt32(4),
-                            BatteryCharge = reader.GetInt32(5),
-                            DeviceRowVersion = reader.GetSqlBinary(reader.GetOrdinal("DeviceRowVersion")).Value,
-                            RowVersion = reader.GetSqlBinary(reader.GetOrdinal("RowVersion")).Value
-                        };
-                    }
-                }
-                finally
-                {
-                    reader.Close();
-                }
-            } else if (id.Contains("P"))
-            {
-                query += " JOIN PersonalComputer ON Device.Id = PersonalComputer.Device_id WHERE PersonalComputer.Device_Id = @id";
-                SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@id", id);
-                connection.Open();
-                
-                SqlDataReader reader = command.ExecuteReader();
-                try
-                {
-                    if (reader.Read())
-                    {
-                        return new PersonalComputer
-                        {
-                            Device_Id = reader.GetString(0),
-                            Name = reader.GetString(1),
-                            IsOn = reader.GetBoolean(2),
-                            Id = reader.GetInt32(4),
-                            OperatingSystem = reader.GetString(5),
-                            DeviceRowVersion = reader.GetSqlBinary(reader.GetOrdinal("DeviceRowVersion")).Value,
-                            RowVersion = reader.GetSqlBinary(reader.GetOrdinal("RowVersion")).Value
-                        };
-                    }
-                }
-                finally
-                {
-                    reader.Close();
-                }
-            } else if (id.Contains("ED"))
-            {
-                query += " JOIN EmbeddedDevice on Device.Id = EmbeddedDevice.Device_id WHERE EmbeddedDevice.Device_id = @id";
-                SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@id", id);
-                connection.Open();
-                
-                SqlDataReader reader = command.ExecuteReader();
-                try
-                {
-                    if (reader.Read())
-                    {
-                        return new EmbeddedDevice
-                        {
-                            Device_Id = reader.GetString(0),
-                            Name = reader.GetString(1),
-                            IsOn = reader.GetBoolean(2),
-                            Id = reader.GetInt32(4),
-                            IpAddress = reader.GetString(5),
-                            NetworkName = reader.GetString(6),
-                            DeviceRowVersion = reader.GetSqlBinary(reader.GetOrdinal("DeviceRowVersion")).Value,
-                            RowVersion = reader.GetSqlBinary(reader.GetOrdinal("RowVersion")).Value
-                        };
-                    }
-                }
-                finally
-                {
-                    reader.Close();
-                }
-            }
-        }
+            var s when s.Contains("SW") => "SELECT * FROM Device JOIN SmartWatch ON Device.Id = SmartWatch.Device_id WHERE SmartWatch.Device_Id = @id",
+            var s when s.Contains("P") => "SELECT * FROM Device JOIN PersonalComputer ON Device.Id = PersonalComputer.Device_id WHERE PersonalComputer.Device_Id = @id",
+            var s when s.Contains("ED") => "SELECT * FROM Device JOIN EmbeddedDevice ON Device.Id = EmbeddedDevice.Device_id WHERE EmbeddedDevice.Device_id = @id",
+            _ => null
+        };
 
-        return null;
+        if (query is null) return null;
+
+        using SqlConnection connection = new(_connectionString);
+        using SqlCommand command = new(query, connection);
+        command.Parameters.AddWithValue("@id", id);
+        connection.Open();
+
+        using SqlDataReader reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+
+        return id switch
+        {
+            var s when s.Contains("SW") => new SmartWatch
+            {
+                Device_Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                IsOn = reader.GetBoolean(2),
+                Id = reader.GetInt32(4),
+                BatteryCharge = reader.GetInt32(5),
+                DeviceRowVersion = reader.GetSqlBinary(reader.GetOrdinal("DeviceRowVersion")).Value,
+                RowVersion = reader.GetSqlBinary(reader.GetOrdinal("RowVersion")).Value
+            },
+            var s when s.Contains("P") => new PersonalComputer
+            {
+                Device_Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                IsOn = reader.GetBoolean(2),
+                Id = reader.GetInt32(4),
+                OperatingSystem = reader.GetString(5),
+                DeviceRowVersion = reader.GetSqlBinary(reader.GetOrdinal("DeviceRowVersion")).Value,
+                RowVersion = reader.GetSqlBinary(reader.GetOrdinal("RowVersion")).Value
+            },
+            var s when s.Contains("ED") => new EmbeddedDevice
+            {
+                Device_Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                IsOn = reader.GetBoolean(2),
+                Id = reader.GetInt32(4),
+                IpAddress = reader.GetString(5),
+                NetworkName = reader.GetString(6),
+                DeviceRowVersion = reader.GetSqlBinary(reader.GetOrdinal("DeviceRowVersion")).Value,
+                RowVersion = reader.GetSqlBinary(reader.GetOrdinal("RowVersion")).Value
+            },
+            _ => null
+        };
     }
     
+    private static void SetSmartWatchId(SmartWatch watch, int count)
+    {
+        if (watch.Device_Id.IsNullOrEmpty())
+            watch.Device_Id = $"SW-{count + 1}";
+    }
+
+    private static void SetPersonalComputerId(PersonalComputer pc, int count)
+    {
+        if (pc.Device_Id.IsNullOrEmpty())
+            pc.Device_Id = $"P-{count + 1}";
+    }
+
+    private static void SetEmbeddedDeviceId(EmbeddedDevice ed, int count)
+    {
+        if (ed.Device_Id.IsNullOrEmpty())
+            ed.Device_Id = $"ED-{count + 1}";
+    }
+
+    private int GetMaxId(SqlConnection connection, string tableName)
+    {
+        using SqlCommand countCommand = new($"SELECT MAX(id) FROM {tableName}", connection);
+        var result = countCommand.ExecuteScalar();
+        return result is DBNull ? 0 : (int)result;
+    }
+
     public void AddSmartWatch(SmartWatch smartWatch)
     {
-        // adding id and inserting into the db
-        using (SqlConnection connection = new SqlConnection(_connectionString))
+        using SqlConnection connection = new(_connectionString);
+        connection.Open();
+        var count = GetMaxId(connection, "SmartWatch");
+        SetSmartWatchId(smartWatch, count);
+
+        using SqlCommand command = new("AddSmartWatch", connection)
         {
-            connection.Open();
-            var countSwQuery = "SELECT MAX(id) FROM SmartWatch";
-            var count = -1;
-            SqlCommand countCommand = new SqlCommand(countSwQuery, connection);
-            SqlDataReader reader = countCommand.ExecuteReader();
-            try
-            {
-                if (reader.Read())
-                {
-                    count = reader.GetInt32(0);
-                }
-            }
-            finally
-            {
-                reader.Close();
-            }
+            CommandType = CommandType.StoredProcedure
+        };
+        command.Parameters.AddWithValue("@DeviceId", smartWatch.Device_Id);
+        command.Parameters.AddWithValue("@Name", smartWatch.Name);
+        command.Parameters.AddWithValue("@IsOn", smartWatch.IsOn);
+        command.Parameters.AddWithValue("@BatteryCharge", smartWatch.BatteryCharge);
 
-            // set the device id only if it was not set
-            if (smartWatch.Device_Id.IsNullOrEmpty())
-            {
-                smartWatch.Device_Id = $"SW-{count + 1}";
-            }
-
-            SqlCommand command = new SqlCommand("AddSmartWatch", connection);
-            command.CommandType = CommandType.StoredProcedure;
-            command.Parameters.AddWithValue("@DeviceId", smartWatch.Device_Id);
-            command.Parameters.AddWithValue("@Name", smartWatch.Name);
-            command.Parameters.AddWithValue("@IsOn", smartWatch.IsOn);
-            command.Parameters.AddWithValue("@BatteryCharge", smartWatch.BatteryCharge);
-            
-            command.ExecuteNonQuery();
-        }
+        command.ExecuteNonQuery();
     }
 
     public void AddPersonalComputer(PersonalComputer personalComputer)
     {
-        // adding id and inserting into the db
-        using (SqlConnection connection = new SqlConnection(_connectionString))
-        {
-            connection.Open();
-            var countPcQuery = "SELECT MAX(id) FROM PersonalComputer";
-            var count = -1;
-            SqlCommand countCommand = new SqlCommand(countPcQuery, connection);
-            SqlDataReader reader = countCommand.ExecuteReader();
-            try
-            {
-                if (reader.Read())
-                {
-                    count = reader.GetInt32(0);
-                }
-            }
-            finally
-            {
-                reader.Close();
-            }
-                
-            // set the device id only if it was not set
-            if (personalComputer.Device_Id.IsNullOrEmpty())
-            {
-                personalComputer.Device_Id = $"P-{count + 1}";
-            }
+        using SqlConnection connection = new(_connectionString);
+        connection.Open();
+        var count = GetMaxId(connection, "PersonalComputer");
+        SetPersonalComputerId(personalComputer, count);
 
-            SqlCommand command = new SqlCommand("AddPersonalComputer", connection);
-            command.CommandType = CommandType.StoredProcedure;
-            command.Parameters.AddWithValue("@DeviceId", personalComputer.Device_Id);
-            command.Parameters.AddWithValue("@Name", personalComputer.Name);
-            command.Parameters.AddWithValue("@IsOn", personalComputer.IsOn);
-            command.Parameters.AddWithValue("@OperatingSystem", personalComputer.OperatingSystem);
-            
-            command.ExecuteNonQuery();
-        }
+        using SqlCommand command = new("AddPersonalComputer", connection)
+        {
+            CommandType = CommandType.StoredProcedure
+        };
+        command.Parameters.AddWithValue("@DeviceId", personalComputer.Device_Id);
+        command.Parameters.AddWithValue("@Name", personalComputer.Name);
+        command.Parameters.AddWithValue("@IsOn", personalComputer.IsOn);
+        command.Parameters.AddWithValue("@OperatingSystem", personalComputer.OperatingSystem);
+
+        command.ExecuteNonQuery();
     }
-    
+
     public void AddEmbeddedDevice(EmbeddedDevice embeddedDevice)
     {
-        // adding id and inserting into the db
-        using (SqlConnection connection = new SqlConnection(_connectionString))
-        {
-            connection.Open();
-            var countEdQuery = "SELECT MAX(id) FROM EmbeddedDevice";
-            var count = -1;
-            SqlCommand countCommand = new SqlCommand(countEdQuery, connection);
-            SqlDataReader reader = countCommand.ExecuteReader();
-            try
-            {
-                if (reader.Read())
-                {
-                    count = reader.GetInt32(0);
-                }
-            }
-            finally
-            {
-                reader.Close();
-            }
-                
-            // set the device id only if it was not set
-            if (embeddedDevice.Device_Id.IsNullOrEmpty())
-            {
-                embeddedDevice.Device_Id = $"ED-{count + 1}";
-            }
+        using SqlConnection connection = new(_connectionString);
+        connection.Open();
+        var count = GetMaxId(connection, "EmbeddedDevice");
+        SetEmbeddedDeviceId(embeddedDevice, count);
 
-            SqlCommand command = new SqlCommand("AddEmbeddedDevice", connection);
-            command.CommandType = CommandType.StoredProcedure;
-            command.Parameters.AddWithValue("@DeviceId", embeddedDevice.Device_Id);
-            command.Parameters.AddWithValue("@Name", embeddedDevice.Name);
-            command.Parameters.AddWithValue("@IsOn", embeddedDevice.IsOn);
-            command.Parameters.AddWithValue("@IpAddress", embeddedDevice.IpAddress);
-            command.Parameters.AddWithValue("@NetworkName", embeddedDevice.NetworkName);
-            command.Parameters.AddWithValue("@IsConnected", embeddedDevice.IsConnected);
-            
-            command.ExecuteNonQuery();
-        }
+        using SqlCommand command = new("AddEmbeddedDevice", connection)
+        {
+            CommandType = CommandType.StoredProcedure
+        };
+        command.Parameters.AddWithValue("@DeviceId", embeddedDevice.Device_Id);
+        command.Parameters.AddWithValue("@Name", embeddedDevice.Name);
+        command.Parameters.AddWithValue("@IsOn", embeddedDevice.IsOn);
+        command.Parameters.AddWithValue("@IpAddress", embeddedDevice.IpAddress);
+        command.Parameters.AddWithValue("@NetworkName", embeddedDevice.NetworkName);
+        command.Parameters.AddWithValue("@IsConnected", embeddedDevice.IsConnected);
+
+        command.ExecuteNonQuery();
     }
     
     public void UpdateSmartWatch(SmartWatch smartWatch)

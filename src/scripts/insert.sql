@@ -6,4 +6,4 @@ EXEC AddSmartWatch @DeviceId = 'sw-2', @Name = 'Samsung Galaxy Watch 2', @IsOn =
 EXEC AddSmartWatch @DeviceId = 'sw-3', @Name = 'Samsung Galaxy Watch 3', @IsOn = 1, @BatteryCharge = 92;
 EXEC AddEmbeddedDevice @DeviceId = 'ED-1', @Name = 'Efafa 33', @IsOn = 1, @IpAddress = '190.169.0.0', @NetworkName = 'UniversityNetwork', @IsConnected = 0;
 EXEC AddEmbeddedDevice @DeviceId = 'ED-2', @Name = 'Ofapfa 11', @IsOn = 1, @IpAddress = '192.169.0.15', @NetworkName = 'UniversityNetwork', @IsConnected = 1;
-EXEC AddEmbeddedDevice @DeviceId = 'ED-3', @Name = 'Ofapfa 11', @IsOn = 1, @IpAddress = '192.169.0.15', @NetworkName = 'UniversityNetwork', @IsConnected = 1;
+EXEC AddEmbeddedDevice @DeviceId = 'ED-3', @Name = 'Ofapfa 12', @IsOn = 1, @IpAddress = '192.169.0.15', @NetworkName = 'UniversityNetwork', @IsConnected = 1;
