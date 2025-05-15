@@ -64,13 +64,13 @@ app.UseHttpsRedirection();
 
 // ========== Minimal API Endpoints ==========
 
-app.MapGet("/api/devices", (IDeviceService deviceService) =>
+app.MapGet("/api/devices", async (IDeviceService deviceService) =>
 {
     var devices = deviceService.GetAllDevices().ToList();
     return devices.Any() ? Results.Ok(devices) : Results.NotFound();
 });
 
-app.MapGet("/api/devices/{id}", (IDeviceService deviceService, string id) =>
+app.MapGet("/api/devices/{id}", async (IDeviceService deviceService, string id) =>
 {
     var device = deviceService.GetDeviceById(id);
     return device != null ? Results.Json(device) : Results.NotFound();
@@ -85,17 +85,18 @@ app.MapPost("/api/devices", async (HttpRequest request, IDeviceService deviceSer
 
     return contentType switch
     {
-        "application/json" => Try(() =>
+        "application/json" => await TryAsync(async () =>
         {
             var json = JsonNode.Parse(body);
             if (json == null) return Results.BadRequest("Invalid JSON format.");
-            deviceService.AddDeviceByJson(json);
+
+            await deviceService.AddDeviceByJson(json);
             return Results.Created();
         }),
 
-        "text/plain" => Try(() =>
+        "text/plain" => await TryAsync(async () =>
         {
-            deviceService.AddDeviceByRawText(body);
+            await deviceService.AddDeviceByRawText(body);
             return Results.Created();
         }),
 
@@ -118,7 +119,7 @@ app.MapPut("/api/devices", async (HttpRequest request, IDeviceService deviceServ
 
     try
     {
-        deviceService.UpdateDevice(json);
+        await deviceService.UpdateDevice(json);
         return Results.Ok();
     }
     catch (FileNotFoundException e)
@@ -131,11 +132,11 @@ app.MapPut("/api/devices", async (HttpRequest request, IDeviceService deviceServ
     }
 });
 
-app.MapDelete("/api/devices/{id}", (IDeviceService deviceService, string id) =>
+app.MapDelete("/api/devices/{id}", async (IDeviceService deviceService, string id) =>
 {
     try
     {
-        deviceService.DeleteDevice(id);
+        await deviceService.DeleteDevice(id);
         return Results.Ok();
     }
     catch (FileNotFoundException e)
@@ -162,3 +163,16 @@ static IResult Try(Func<IResult> action)
         return Results.BadRequest(e.Message);
     }
 }
+
+static async Task<IResult> TryAsync(Func<Task<IResult>> func)
+{
+    try
+    {
+        return await func();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+}
+

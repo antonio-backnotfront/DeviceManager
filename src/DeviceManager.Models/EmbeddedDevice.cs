@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using src.DeviceManager.Exceptions;
 
 namespace src.DeviceManager.Models;
 

@@ -7,8 +7,8 @@ public interface IDeviceService
 {
     public IEnumerable<DeviceDTO> GetAllDevices();
     public Device? GetDeviceById(string id);
-    public bool AddDeviceByRawText(string text);
-    public bool AddDeviceByJson(JsonNode? json);
-    public bool DeleteDevice(string id);
-    public bool UpdateDevice(JsonNode? json);
+    public Task<bool> AddDeviceByRawText(string text);
+    public Task<bool> AddDeviceByJson(JsonNode? json);
+    public Task<bool> DeleteDevice(string id);
+    public Task<bool> UpdateDevice(JsonNode? json);
 }

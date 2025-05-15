@@ -1,4 +1,6 @@
-﻿namespace src.DeviceManager.Models;
+﻿using src.DeviceManager.Exceptions;
+
+namespace src.DeviceManager.Models;
 
 public class SmartWatch : Device, IPowerNotifier
 {

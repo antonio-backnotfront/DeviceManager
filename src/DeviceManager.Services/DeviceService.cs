@@ -22,7 +22,7 @@ public class DeviceService : IDeviceService
 
     public Device? GetDeviceById(string id) => _deviceRepository.GetDeviceById(id);
 
-    public bool AddDeviceByJson(JsonNode? json)
+    public async Task<bool> AddDeviceByJson(JsonNode? json)
     {
         var deviceType = json?["deviceType"]?.ToString()?.ToLower();
         if (string.IsNullOrEmpty(deviceType))
@@ -32,28 +32,28 @@ public class DeviceService : IDeviceService
 
         return deviceType switch
         {
-            "sw" => DeserializeAndAddDevice<SmartWatch>(json, options, ValidateSmartWatch, _deviceRepository.AddSmartWatch),
-            "pc" => DeserializeAndAddDevice<PersonalComputer>(json, options, ValidatePC, _deviceRepository.AddPersonalComputer),
-            "ed" => DeserializeAndAddDevice<EmbeddedDevice>(json, options, ValidateEmbeddedDevice, _deviceRepository.AddEmbeddedDevice),
+            "sw" => await DeserializeAndAddDevice<SmartWatch>(json, options, ValidateSmartWatch, d => _deviceRepository.AddSmartWatch(d)),
+            "pc" => await DeserializeAndAddDevice<PersonalComputer>(json, options, ValidatePC, d => _deviceRepository.AddPersonalComputer(d)),
+            "ed" => await DeserializeAndAddDevice<EmbeddedDevice>(json, options, ValidateEmbeddedDevice, d => _deviceRepository.AddEmbeddedDevice(d)),
             _ => throw new ApplicationException("Unknown device type.")
         };
     }
 
-    public bool AddDeviceByRawText(string text)
+    public async Task<bool> AddDeviceByRawText(string text)
     {
         var parts = text.Split(',');
         var idPrefix = parts[0].Split('-')[0].ToLower();
 
         return idPrefix switch
         {
-            "sw" => AddSmartWatchFromText(parts),
-            "p" => AddPCFromText(parts),
-            "ed" => AddEmbeddedDeviceFromText(parts),
+            "sw" => await AddSmartWatchFromText(parts),
+            "p" => await AddPCFromText(parts),
+            "ed" => await AddEmbeddedDeviceFromText(parts),
             _ => throw new ArgumentException("Unknown device.")
         };
     }
 
-    public bool UpdateDevice(JsonNode? json)
+    public async Task<bool> UpdateDevice(JsonNode? json)
     {
         var id = json?["device_id"]?.ToString();
         if (string.IsNullOrEmpty(id))
@@ -65,29 +65,29 @@ public class DeviceService : IDeviceService
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         if (id.Contains("SW"))
-            return DeserializeAndUpdateDevice<SmartWatch>(json, options, ValidateSmartWatch, _deviceRepository.UpdateSmartWatch);
+            return await DeserializeAndUpdateDevice<SmartWatch>(json, options, ValidateSmartWatch, _deviceRepository.UpdateSmartWatch);
         else if (id.Contains("P"))
-            return DeserializeAndUpdateDevice<PersonalComputer>(json, options, ValidatePC, _deviceRepository.UpdatePersonalComputer);
+            return await DeserializeAndUpdateDevice<PersonalComputer>(json, options, ValidatePC, _deviceRepository.UpdatePersonalComputer);
         else if (id.Contains("ED"))
-            return DeserializeAndUpdateDevice<EmbeddedDevice>(json, options, ValidateEmbeddedDevice, _deviceRepository.UpdateEmbeddedDevice);
+            return await DeserializeAndUpdateDevice<EmbeddedDevice>(json, options, ValidateEmbeddedDevice, _deviceRepository.UpdateEmbeddedDevice);
 
         throw new ApplicationException("Unknown device type.");
     }
 
-    public bool DeleteDevice(string id)
+    async public Task<bool> DeleteDevice(string id)
     {
         if (GetDeviceById(id) == null)
             throw new FileNotFoundException("Device not found.");
 
-        if (id.Contains("SW")) _deviceRepository.DeleteWatch(id);
-        else if (id.Contains("P")) _deviceRepository.DeleteComputer(id);
-        else if (id.Contains("ED")) _deviceRepository.DeleteEmbeddedDevice(id);
+        if (id.Contains("SW")) await _deviceRepository.DeleteWatch(id);
+        else if (id.Contains("P")) await _deviceRepository.DeleteComputer(id);
+        else if (id.Contains("ED")) await _deviceRepository.DeleteEmbeddedDevice(id);
         else throw new ApplicationException("Unknown device type.");
 
         return true;
     }
 
-    private static bool DeserializeAndAddDevice<T>(JsonNode? json, JsonSerializerOptions options, Action<T> validator, Action<T> repositoryAdd) where T : class
+    public static async Task<bool> DeserializeAndAddDevice<T>(JsonNode? json, JsonSerializerOptions options, Action<T> validator, Action<T> repositoryAdd) where T : class
     {
         T? device;
         try { device = JsonSerializer.Deserialize<T>(json, options); }
@@ -98,22 +98,35 @@ public class DeviceService : IDeviceService
 
         validator(device);
         repositoryAdd(device);
+        await Task.CompletedTask;
         return true;
     }
 
-    private static bool DeserializeAndUpdateDevice<T>(JsonNode? json, JsonSerializerOptions options, Action<T> validator, Action<T> repositoryUpdate) where T : class
+    public static async Task<bool> DeserializeAndUpdateDevice<T>(
+        JsonNode? json,
+        JsonSerializerOptions options,
+        Action<T> validator,
+        Func<T, Task> repositoryUpdate
+    ) where T : class
     {
         T? device;
-        try { device = JsonSerializer.Deserialize<T>(json, options); }
-        catch { throw new ArgumentException("JSON deserialization failed. Seek help."); }
+        try
+        {
+            device = JsonSerializer.Deserialize<T>(json, options);
+        }
+        catch
+        {
+            throw new ArgumentException("JSON deserialization failed. Seek help.");
+        }
 
         if (device == null)
             throw new ArgumentException("JSON deserialization failed. Seek help.");
 
         validator(device);
-        repositoryUpdate(device);
+        await repositoryUpdate(device);
         return true;
     }
+
 
     private static void ValidateSmartWatch(SmartWatch watch)
     {
@@ -139,7 +152,7 @@ public class DeviceService : IDeviceService
             throw new ArgumentException("The network name should contain \"MD Ltd.\" for the device to be able to be connected.");
     }
 
-    private bool AddSmartWatchFromText(string[] parts)
+    async public Task<bool> AddSmartWatchFromText(string[] parts)
     {
         var watch = new SmartWatch
         {
@@ -150,11 +163,11 @@ public class DeviceService : IDeviceService
         };
 
         ValidateSmartWatch(watch);
-        _deviceRepository.AddSmartWatch(watch);
+        await _deviceRepository.AddSmartWatch(watch);
         return true;
     }
 
-    private bool AddPCFromText(string[] parts)
+    async public Task<bool> AddPCFromText(string[] parts)
     {
         var pc = new PersonalComputer
         {
@@ -165,11 +178,11 @@ public class DeviceService : IDeviceService
         };
 
         ValidatePC(pc);
-        _deviceRepository.AddPersonalComputer(pc);
+        await _deviceRepository.AddPersonalComputer(pc);
         return true;
     }
 
-    private bool AddEmbeddedDeviceFromText(string[] parts)
+    async public Task<bool> AddEmbeddedDeviceFromText(string[] parts)
     {
         var ed = new EmbeddedDevice
         {
@@ -182,7 +195,7 @@ public class DeviceService : IDeviceService
         };
 
         ValidateEmbeddedDevice(ed);
-        _deviceRepository.AddEmbeddedDevice(ed);
+        await _deviceRepository.AddEmbeddedDevice(ed);
         return true;
     }
 }

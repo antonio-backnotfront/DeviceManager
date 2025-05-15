@@ -8,14 +8,14 @@ public interface IDeviceRepository
 {
     public IEnumerable<DeviceDTO> GetAllDevices();
     public Device? GetDeviceById(string id);
-    public void AddPersonalComputer(PersonalComputer personalComputer);
-    public void AddSmartWatch(SmartWatch smartWatch);
-    public void UpdateSmartWatch(SmartWatch smartWatch);
-    public void AddEmbeddedDevice(EmbeddedDevice embeddedDevice);
-    public void UpdateEmbeddedDevice(EmbeddedDevice embeddedDevice);
-    public void UpdatePersonalComputer(PersonalComputer personalComputer);
-    public void DeleteComputer(string id);
-    public void DeleteWatch(string id);
-    public void DeleteEmbeddedDevice(string id);
+    public Task AddPersonalComputer(PersonalComputer personalComputer);
+    public Task AddSmartWatch(SmartWatch smartWatch);
+    public Task UpdateSmartWatch(SmartWatch smartWatch);
+    public Task AddEmbeddedDevice(EmbeddedDevice embeddedDevice);
+    public Task UpdateEmbeddedDevice(EmbeddedDevice embeddedDevice);
+    public Task UpdatePersonalComputer(PersonalComputer personalComputer);
+    public Task DeleteComputer(string id);
+    public Task DeleteWatch(string id);
+    public Task DeleteEmbeddedDevice(string id);
 
 }

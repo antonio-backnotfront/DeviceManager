@@ -122,10 +122,10 @@ public class DeviceRepository : IDeviceRepository
         return result is DBNull ? 0 : (int)result;
     }
 
-    public void AddSmartWatch(SmartWatch smartWatch)
+    public async Task AddSmartWatch(SmartWatch smartWatch)
     {
         using SqlConnection connection = new(_connectionString);
-        connection.Open();
+        await connection.OpenAsync();
         var count = GetMaxId(connection, "SmartWatch");
         SetSmartWatchId(smartWatch, count);
 
@@ -138,13 +138,13 @@ public class DeviceRepository : IDeviceRepository
         command.Parameters.AddWithValue("@IsOn", smartWatch.IsOn);
         command.Parameters.AddWithValue("@BatteryCharge", smartWatch.BatteryCharge);
 
-        command.ExecuteNonQuery();
+        await command.ExecuteNonQueryAsync();
     }
 
-    public void AddPersonalComputer(PersonalComputer personalComputer)
+    public async Task AddPersonalComputer(PersonalComputer personalComputer)
     {
         using SqlConnection connection = new(_connectionString);
-        connection.Open();
+        await connection.OpenAsync();
         var count = GetMaxId(connection, "PersonalComputer");
         SetPersonalComputerId(personalComputer, count);
 
@@ -157,13 +157,13 @@ public class DeviceRepository : IDeviceRepository
         command.Parameters.AddWithValue("@IsOn", personalComputer.IsOn);
         command.Parameters.AddWithValue("@OperatingSystem", personalComputer.OperatingSystem);
 
-        command.ExecuteNonQuery();
+        await command.ExecuteNonQueryAsync();
     }
 
-    public void AddEmbeddedDevice(EmbeddedDevice embeddedDevice)
+    public async Task AddEmbeddedDevice(EmbeddedDevice embeddedDevice)
     {
         using SqlConnection connection = new(_connectionString);
-        connection.Open();
+        await connection.OpenAsync();
         var count = GetMaxId(connection, "EmbeddedDevice");
         SetEmbeddedDeviceId(embeddedDevice, count);
 
@@ -178,14 +178,14 @@ public class DeviceRepository : IDeviceRepository
         command.Parameters.AddWithValue("@NetworkName", embeddedDevice.NetworkName);
         command.Parameters.AddWithValue("@IsConnected", embeddedDevice.IsConnected);
 
-        command.ExecuteNonQuery();
+        await command.ExecuteNonQueryAsync();
     }
     
-    public void UpdateSmartWatch(SmartWatch smartWatch)
+    public async Task UpdateSmartWatch(SmartWatch smartWatch)
     {
         using (SqlConnection connection = new SqlConnection(_connectionString))
         {
-            connection.Open();
+            await connection.OpenAsync();
             SqlTransaction transaction = connection.BeginTransaction();
 
             try
@@ -199,9 +199,9 @@ public class DeviceRepository : IDeviceRepository
                 using (SqlCommand rowVersionCmd = new SqlCommand(rowVersionQuery, connection, transaction))
                 {
                     rowVersionCmd.Parameters.AddWithValue("@Id", smartWatch.Device_Id);
-                    using (var reader = rowVersionCmd.ExecuteReader())
+                    using (var reader = await rowVersionCmd.ExecuteReaderAsync())
                     {
-                        if (reader.Read())
+                        if (await reader.ReadAsync())
                         {
                             deviceRowVersion = (byte[])reader["DeviceRowVersion"];
                             watchRowVersion = (byte[])reader["WatchRowVersion"];
@@ -225,7 +225,7 @@ public class DeviceRepository : IDeviceRepository
                     updateDeviceCommand.Parameters.AddWithValue("@Name", smartWatch.Name);
                     updateDeviceCommand.Parameters.Add("@DeviceRowVersion", SqlDbType.Timestamp).Value = deviceRowVersion;
 
-                    if (updateDeviceCommand.ExecuteNonQuery() == 0)
+                    if (await updateDeviceCommand.ExecuteNonQueryAsync() == 0)
                         throw new DBConcurrencyException("Device update failed due to concurrent modification.");
                 }
 
@@ -235,25 +235,25 @@ public class DeviceRepository : IDeviceRepository
                     updateWatchCommand.Parameters.AddWithValue("@BatteryCharge", smartWatch.BatteryCharge);
                     updateWatchCommand.Parameters.Add("@WatchRowVersion", SqlDbType.Timestamp).Value = watchRowVersion;
 
-                    if (updateWatchCommand.ExecuteNonQuery() == 0)
+                    if (await updateWatchCommand.ExecuteNonQueryAsync() == 0)
                         throw new DBConcurrencyException("SmartWatch update failed due to concurrent modification.");
                 }
 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
     }
     
-    public void UpdatePersonalComputer(PersonalComputer personalComputer)
+    public async Task UpdatePersonalComputer(PersonalComputer personalComputer)
     {
         using (SqlConnection connection = new SqlConnection(_connectionString))
         {
-            connection.Open();
+            await connection.OpenAsync();
             SqlTransaction transaction = connection.BeginTransaction();
 
             try
@@ -267,7 +267,7 @@ public class DeviceRepository : IDeviceRepository
                 using (SqlCommand rowVersionCmd = new SqlCommand(rowVersionQuery, connection, transaction))
                 {
                     rowVersionCmd.Parameters.AddWithValue("@Id", personalComputer.Device_Id);
-                    using (var reader = rowVersionCmd.ExecuteReader())
+                    using (var reader = await rowVersionCmd.ExecuteReaderAsync())
                     {
                         if (reader.Read())
                         {
@@ -291,7 +291,7 @@ public class DeviceRepository : IDeviceRepository
                 updateDeviceCommand.Parameters.AddWithValue("@Name", personalComputer.Name);
                 updateDeviceCommand.Parameters.Add("@DeviceRowVersion", SqlDbType.Timestamp).Value = deviceRowVersion;
         
-                if (updateDeviceCommand.ExecuteNonQuery() == 0)
+                if (await updateDeviceCommand.ExecuteNonQueryAsync() == 0)
                     throw new DBConcurrencyException("Device update failed due to concurrent modification.");
     
                 SqlCommand updateComputerCommand = new SqlCommand(updateComputerQuery, connection, transaction);
@@ -299,24 +299,24 @@ public class DeviceRepository : IDeviceRepository
                 updateComputerCommand.Parameters.AddWithValue("@OperatingSystem", personalComputer.OperatingSystem);
                 updateComputerCommand.Parameters.Add("@ComputerRowVersion", SqlDbType.Timestamp).Value = computerRowVersion;
         
-                if (updateComputerCommand.ExecuteNonQuery() == 0)
+                if (await updateComputerCommand.ExecuteNonQueryAsync() == 0)
                     throw new DBConcurrencyException("Device update failed due to concurrent modification.");
             
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
     }
     
-    public void UpdateEmbeddedDevice(EmbeddedDevice embeddedDevice)
+    public async Task UpdateEmbeddedDevice(EmbeddedDevice embeddedDevice)
     {
         using (SqlConnection connection = new SqlConnection(_connectionString))
         {
-            connection.Open();
+            await connection.OpenAsync();
             SqlTransaction transaction = connection.BeginTransaction();
 
             try
@@ -330,9 +330,9 @@ public class DeviceRepository : IDeviceRepository
                 using (SqlCommand rowVersionCmd = new SqlCommand(rowVersionQuery, connection, transaction))
                 {
                     rowVersionCmd.Parameters.AddWithValue("@Id", embeddedDevice.Device_Id);
-                    using (var reader = rowVersionCmd.ExecuteReader())
+                    using (var reader = await rowVersionCmd.ExecuteReaderAsync())
                     {
-                        if (reader.Read())
+                        if (await reader.ReadAsync())
                         {
                             deviceRowVersion = (byte[])reader["DeviceRowVersion"];
                             embeddedRowVersion = (byte[])reader["EmbeddedRowVersion"];
@@ -354,7 +354,7 @@ public class DeviceRepository : IDeviceRepository
                 updateDeviceCommand.Parameters.AddWithValue("@Name", embeddedDevice.Name);
                 updateDeviceCommand.Parameters.Add("@DeviceRowVersion", SqlDbType.Timestamp).Value = deviceRowVersion;
         
-                if (updateDeviceCommand.ExecuteNonQuery() == 0)
+                if (await updateDeviceCommand.ExecuteNonQueryAsync() == 0)
                     throw new DBConcurrencyException("Device update failed due to concurrent modification.");
     
                 SqlCommand updateEmbeddeCommand = new SqlCommand(updateEmbeddedQuery, connection, transaction);
@@ -364,24 +364,24 @@ public class DeviceRepository : IDeviceRepository
                 updateEmbeddeCommand.Parameters.AddWithValue("@IsConnected", embeddedDevice.IsConnected);
                 updateEmbeddeCommand.Parameters.Add("@EmbeddedRowVersion", SqlDbType.Timestamp).Value = embeddedRowVersion;
         
-                if (updateEmbeddeCommand.ExecuteNonQuery() == 0)
+                if (await updateEmbeddeCommand.ExecuteNonQueryAsync() == 0)
                     throw new DBConcurrencyException("Device update failed due to concurrent modification.");
             
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
     }
     
-    public void DeleteWatch(string id)
+    public async Task DeleteWatch(string id)
     {
         using (SqlConnection connection = new SqlConnection(_connectionString))
         {
-            connection.Open();
+            await connection.OpenAsync();
             SqlTransaction transaction = connection.BeginTransaction();
 
             try
@@ -410,17 +410,17 @@ public class DeviceRepository : IDeviceRepository
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
     }
     
-    public void DeleteComputer(string id)
+    public async Task DeleteComputer(string id)
     {
         using (SqlConnection connection = new SqlConnection(_connectionString))
         {
-            connection.Open();
+            await connection.OpenAsync();
             SqlTransaction transaction = connection.BeginTransaction();
 
             try
@@ -433,33 +433,33 @@ public class DeviceRepository : IDeviceRepository
 
                 SqlCommand deleteComputerCommand = new SqlCommand(deleteComputerQuery, connection, transaction);
                 deleteComputerCommand.Parameters.AddWithValue("@Device_Id", id);
-                deleteComputerResult = deleteComputerCommand.ExecuteNonQuery();
+                deleteComputerResult =await deleteComputerCommand.ExecuteNonQueryAsync();
 
                 if (deleteComputerResult == -1)
                     throw new ApplicationException("Deleting the device failed.");
                 
                 SqlCommand deleteDeviceCommand = new SqlCommand(deleteDeviceQuery, connection, transaction);
                 deleteDeviceCommand.Parameters.AddWithValue("@Id", id);
-                deleteDeviceResult = deleteDeviceCommand.ExecuteNonQuery();
+                deleteDeviceResult = await deleteDeviceCommand.ExecuteNonQueryAsync();
                 
                 if (deleteDeviceResult == -1)
                     throw new ApplicationException("Deleting the device failed.");
                 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
     }
     
-    public void DeleteEmbeddedDevice(string id)
+    public async Task DeleteEmbeddedDevice(string id)
     {
         using (SqlConnection connection = new SqlConnection(_connectionString))
         {
-            connection.Open();
+            await connection.OpenAsync();
             SqlTransaction transaction = connection.BeginTransaction();
 
             try
@@ -472,23 +472,24 @@ public class DeviceRepository : IDeviceRepository
                 
                 SqlCommand deleteEmbeddedCommand = new SqlCommand(deleteEmbeddedQuery, connection, transaction);
                 deleteEmbeddedCommand.Parameters.AddWithValue("@Device_Id", id);
-                deleteEmbeddedResult = deleteEmbeddedCommand.ExecuteNonQuery();
+                deleteEmbeddedResult = await deleteEmbeddedCommand.ExecuteNonQueryAsync();
 
                 if (deleteEmbeddedResult == -1)
                     throw new ApplicationException("Deleting the device failed.");
                 
                 SqlCommand deleteDeviceCommand = new SqlCommand(deleteDeviceQuery, connection, transaction);
                 deleteDeviceCommand.Parameters.AddWithValue("@Id", id);
-                deleteDeviceResult = deleteDeviceCommand.ExecuteNonQuery();
+                deleteDeviceResult = await deleteDeviceCommand.ExecuteNonQueryAsync();
+                
                 
                 if (deleteDeviceResult == -1)
                     throw new ApplicationException("Deleting the device failed.");
                 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }

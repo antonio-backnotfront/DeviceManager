@@ -1,5 +1,7 @@
 ﻿
 
+using src.DeviceManager.Exceptions;
+
 namespace src.DeviceManager.Models;
 
 public class PersonalComputer : Device

@@ -1,4 +1,4 @@
-﻿namespace src.DeviceManager.Models;
+﻿namespace src.DeviceManager.Exceptions;
 
 
 public interface IPowerNotifier
